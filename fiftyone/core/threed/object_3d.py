@@ -12,6 +12,10 @@ import numpy as np
 from pydantic.dataclasses import dataclass
 from scipy.spatial.transform import Rotation
 
+import fiftyone.core.utils as fou
+
+threed = fou.lazy_import("fiftyone.core.threed")
+
 
 @dataclass(frozen=True)
 class Vector3:
@@ -221,32 +225,55 @@ class Object3D:
     def _to_dict(self):
         """Converts the object to a dict."""
         data = {
+            "_cls": self.__class__.__name__,
             "name": self.name,
             "visible": self.visible,
             "local_transform_matrix": self.local_transform_matrix.tolist(),
             "children": [child._to_dict() for child in self.children],
         }
 
+        # add object-specific data
+        data.update(self._to_dict_extra())
+
         return data
 
-    @classmethod
-    def _from_dict(cls, json_data: dict):
+    def _to_dict_extra(self):
+        """Returns the extra data to include in the dict representation."""
+        return {}
+
+    @staticmethod
+    def _from_dict(dict_data: dict):
         """Creates an Object3D (or its subclass) from a dict."""
-        if not isinstance(json_data, dict):
+        if not isinstance(dict_data, dict):
             raise ValueError("json_data must be a dictionary")
 
-        obj = cls(
-            name=json_data.get("name", ""),
-            visible=json_data.get("visible", True),
+        cls_name = dict_data.get("_cls", "Object3D")
+        clz = getattr(threed, cls_name, Object3D)
+
+        obj = clz(
+            name=dict_data.get("name", ""),
+            visible=dict_data.get("visible", True),
+            **{
+                k: v
+                for k, v in dict_data.items()
+                if k
+                not in [
+                    "_cls",
+                    "name",
+                    "visible",
+                    "children",
+                    "local_transform_matrix",
+                ]
+            },
         )
 
-        matrix_data = json_data.get(
+        matrix_data = dict_data.get(
             "local_transform_matrix", np.eye(4).tolist()
         )
         obj.local_transform_matrix = np.array(matrix_data)
 
         # recursively handle children
-        for child_json in json_data.get("children", []):
+        for child_json in dict_data.get("children", []):
             child = Object3D._from_dict(child_json)
             obj.add(child)
 
