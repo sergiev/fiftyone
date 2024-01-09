@@ -36,7 +36,7 @@ class Scene(Object3D):
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be exported to a .fo3d file")
 
-        json = super()._to_json()
+        json = super()._to_dict()
 
         with open(path, "w") as f:
             f.write(json)
@@ -50,4 +50,4 @@ class Scene(Object3D):
         with open(path, "r") as f:
             json = f.read()
 
-        return Scene._from_json(json)
+        return Scene._from_dict(json)
