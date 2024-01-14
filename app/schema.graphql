@@ -474,6 +474,7 @@ enum MediaType {
   image
   group
   point_cloud
+  three_d
   video
 }
 
@@ -670,7 +671,7 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | VideoSample
+union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -797,6 +798,13 @@ enum Theme {
   browser
   dark
   light
+}
+
+type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type ValueColor {
