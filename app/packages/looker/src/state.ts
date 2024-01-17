@@ -235,7 +235,12 @@ export interface ImaVidConfig extends BaseConfig {
   firstFrameNumber: number;
 }
 
-export type PcdConfig = BaseConfig;
+export interface ThreeDConfig extends BaseConfig {
+  /**
+   * whether or not orthographic projection metada is available for this 3D sample
+   */
+  isOpmAvailable: boolean;
+}
 
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
@@ -259,7 +264,7 @@ export interface ImaVidOptions extends BaseOptions {
   playbackRate: number;
 }
 
-export type PcdOptions = BaseOptions;
+export type ThreeDOptions = BaseOptions;
 
 export interface TooltipOverlay {
   color: string;
@@ -390,10 +395,10 @@ export interface ImaVidState extends BaseState {
   seekBarHovering: boolean;
 }
 
-export interface PcdState extends BaseState {
-  config: PcdConfig;
-  options: PcdOptions;
-  SHORTCUTS: Readonly<ControlMap<PcdState>>;
+export interface ThreeDState extends BaseState {
+  config: ThreeDConfig;
+  options: ThreeDOptions;
+  SHORTCUTS: Readonly<ControlMap<ThreeDState>>;
 }
 
 export interface Point {
@@ -475,7 +480,7 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   volume: 0,
 };
 
-export const DEFAULT_PCD_OPTIONS: PcdOptions = {
+export const DEFAULT_3D_OPTIONS: ThreeDOptions = {
   ...DEFAULT_BASE_OPTIONS,
 };
 
