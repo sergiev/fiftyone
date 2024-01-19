@@ -20,7 +20,7 @@ import React, {
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
-import { CAMERA_POSITION_KEY } from "./Environment";
+import { CAMERA_POSITION_KEY, Environment } from "./Environment";
 import {
   Looker3dPluginSettings,
   defaultPluginSettings,
@@ -28,6 +28,7 @@ import {
 import { SpinningCube } from "./SpinningCube";
 import {
   ChooseColorSpace,
+  Screenshot,
   SetPointSizeButton,
   SetViewButton,
   SliceSelector,
@@ -37,15 +38,9 @@ import {
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
 import { useHotkey, usePathFilter } from "./hooks";
-import {
-  Cuboid,
-  CuboidProps,
-  OverlayLabel,
-  PolyLineProps,
-  Polyline,
-  load3dOverlays,
-} from "./overlays";
+import { OverlayLabel, load3dOverlays } from "./overlays";
 import { PointCloudMesh } from "./renderables";
+import { ThreeDLabels } from "./renderables/Labels";
 import {
   currentActionAtom,
   currentPointSizeAtom,
@@ -367,9 +362,6 @@ export const Looker3d = () => {
               customColorMap[isPointcloudDataset ? "default" : slice]) ??
             "#00ff00";
 
-          // todo: remove
-          return null;
-
           return (
             <PointCloudMesh
               key={slice}
@@ -432,53 +424,6 @@ export const Looker3d = () => {
     ]
   );
 
-  const [cuboidOverlays, polylineOverlays] = useMemo(() => {
-    const newCuboidOverlays = [];
-    const newPolylineOverlays = [];
-
-    for (const overlay of overlays) {
-      if (overlay._cls === "Detection") {
-        newCuboidOverlays.push(
-          <Cuboid
-            key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
-            rotation={overlayRotation}
-            itemRotation={itemRotation}
-            opacity={labelAlpha}
-            {...(overlay as unknown as CuboidProps)}
-            onClick={() => handleSelect(overlay)}
-            label={overlay}
-            tooltip={tooltip}
-            useLegacyCoordinates={settings.useLegacyCoordinates}
-          />
-        );
-      } else if (
-        overlay._cls === "Polyline" &&
-        (overlay as unknown as PolyLineProps).points3d
-      ) {
-        newPolylineOverlays.push(
-          <Polyline
-            key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
-            rotation={overlayRotation}
-            opacity={labelAlpha}
-            {...(overlay as unknown as PolyLineProps)}
-            label={overlay}
-            onClick={() => handleSelect(overlay)}
-            tooltip={tooltip}
-          />
-        );
-      }
-    }
-    return [newCuboidOverlays, newPolylineOverlays];
-  }, [
-    overlays,
-    itemRotation,
-    labelAlpha,
-    overlayRotation,
-    handleSelect,
-    tooltip,
-    settings,
-  ]);
-
   // if (filteredSamples.length === 0) {
   //   return (
   //     <Container style={{ padding: "2em" }}>
@@ -496,7 +441,7 @@ export const Looker3d = () => {
           <Suspense fallback={<SpinningCube />}>
             <ambientLight intensity={0.5} />
             <spotLight position={[100, 100, 10]} />
-            {/* <Screenshot />
+            <Screenshot />
             <Environment
               controlsRef={controlsRef}
               cameraRef={cameraRef}
@@ -504,9 +449,17 @@ export const Looker3d = () => {
               isGridOn={isGridOn}
               bounds={pointCloudBounds}
             />
-            <mesh rotation={overlayRotation}>{cuboidOverlays}</mesh>
-            {polylineOverlays}
-            {filteredSamples} */}
+            <ThreeDLabels
+              rawOverlays={overlays}
+              itemRotation={itemRotation}
+              labelAlpha={labelAlpha}
+              overlayRotation={overlayRotation}
+              handleSelect={handleSelect}
+              tooltip={tooltip}
+              useLegacyCoordinates={settings.useLegacyCoordinates}
+            />
+            <Suspense fallback={<SpinningCube />} />
+            {filteredSamples}
           </Suspense>
         </Canvas>
         {(hoveringRef.current || hovering) && (
