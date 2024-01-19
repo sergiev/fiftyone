@@ -1,18 +1,15 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import {
-  getHashLabel,
   getLabelColor,
-  isValidColor,
   shouldShowLabelTag,
 } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { COLOR_BY, getColor } from "@fiftyone/utilities";
-import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import _ from "lodash";
 import React, {
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -23,14 +20,14 @@ import React, {
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
-import { CAMERA_POSITION_KEY, Environment } from "./Environment";
+import { CAMERA_POSITION_KEY } from "./Environment";
 import {
   Looker3dPluginSettings,
   defaultPluginSettings,
 } from "./Looker3dPlugin";
+import { SpinningCube } from "./SpinningCube";
 import {
   ChooseColorSpace,
-  Screenshot,
   SetPointSizeButton,
   SetViewButton,
   SliceSelector,
@@ -370,6 +367,9 @@ export const Looker3d = () => {
               customColorMap[isPointcloudDataset ? "default" : slice]) ??
             "#00ff00";
 
+          // todo: remove
+          return null;
+
           return (
             <PointCloudMesh
               key={slice}
@@ -479,31 +479,35 @@ export const Looker3d = () => {
     settings,
   ]);
 
-  if (filteredSamples.length === 0) {
-    return (
-      <Container style={{ padding: "2em" }}>
-        <Typography>
-          No point-cloud samples detected for media field "{mediaField}"
-        </Typography>
-      </Container>
-    );
-  }
+  // if (filteredSamples.length === 0) {
+  //   return (
+  //     <Container style={{ padding: "2em" }}>
+  //       <Typography>
+  //         No point-cloud samples detected for media field "{mediaField}"
+  //       </Typography>
+  //     </Container>
+  //   );
+  // }
 
   return (
     <ErrorBoundary>
       <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
         <Canvas id={CANVAS_WRAPPER_ID} onClick={() => setCurrentAction(null)}>
-          <Screenshot />
-          <Environment
-            controlsRef={controlsRef}
-            cameraRef={cameraRef}
-            settings={settings}
-            isGridOn={isGridOn}
-            bounds={pointCloudBounds}
-          />
-          <mesh rotation={overlayRotation}>{cuboidOverlays}</mesh>
-          {polylineOverlays}
-          {filteredSamples}
+          <Suspense fallback={<SpinningCube />}>
+            <ambientLight intensity={0.5} />
+            <spotLight position={[100, 100, 10]} />
+            {/* <Screenshot />
+            <Environment
+              controlsRef={controlsRef}
+              cameraRef={cameraRef}
+              settings={settings}
+              isGridOn={isGridOn}
+              bounds={pointCloudBounds}
+            />
+            <mesh rotation={overlayRotation}>{cuboidOverlays}</mesh>
+            {polylineOverlays}
+            {filteredSamples} */}
+          </Suspense>
         </Canvas>
         {(hoveringRef.current || hovering) && (
           <ActionBarContainer
