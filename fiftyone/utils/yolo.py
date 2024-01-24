@@ -1,7 +1,7 @@
 """
 Utilities for working with datasets in YOLO format.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -10,6 +10,7 @@ import os
 import warnings
 
 import yaml
+import numpy as np
 
 import eta.core.utils as etau
 
@@ -27,6 +28,7 @@ def add_yolo_labels(
     labels_path,
     classes,
     include_missing=False,
+    confidence_thd=0.0
 ):
     """Adds the given YOLO-formatted labels to the collection.
 
@@ -60,6 +62,7 @@ def add_yolo_labels(
             :class:`Detections <fiftyone.core.labels.Detections>` instances for
             any samples in the input collection whose ``label_field`` is
             ``None`` after import
+        confidence_thd (0.0): add only labels with `confidence>=confidence_thd`
     """
     if isinstance(labels_path, (list, tuple)):
         # Explicit list of labels files
@@ -128,7 +131,7 @@ def add_yolo_labels(
         )
 
     view = sample_collection.select(matched_ids, ordered=True)
-    labels = [load_yolo_annotations(p, classes) for p in matched_paths]
+    labels = [load_yolo_annotations(p, classes, confidence_thd) for p in matched_paths]
     view.set_values(label_field, labels)
 
     if include_missing:
@@ -1008,7 +1011,7 @@ class YOLOAnnotationWriter(object):
         _write_file_lines(rows, txt_path)
 
 
-def load_yolo_annotations(txt_path, classes):
+def load_yolo_annotations(txt_path, classes, confidence_thd=0.0):
     """Loads the YOLO-style annotations from the given TXT file.
 
     The txt file should be a space-delimited file where each row corresponds
@@ -1024,14 +1027,15 @@ def load_yolo_annotations(txt_path, classes):
     Args:
         txt_path: the path to the annotations TXT file
         classes: the list of class label strings
-
+        confidence_thd (0.0): return only labels with `confidence>=confidence_thd`
     Returns:
         a :class:`fiftyone.core.detections.Detections`
     """
     detections = []
     for row in _read_file_lines(txt_path):
         detection = _parse_yolo_row(row, classes)
-        detections.append(detection)
+        if detection.confidence >= confidence_thd:
+            detections.append(detection)
 
     return fol.Detections(detections=detections)
 
@@ -1082,24 +1086,30 @@ def _get_yolo_v5_labels_path(image_path):
 
 def _parse_yolo_row(row, classes):
     row_vals = row.split()
-    target, xc, yc, w, h = row_vals[:5]
+    target = row_vals[0]
+    confidence = None
+    if len(row_vals) < 7: # box case
+        xc, yc, w, h = map(float, row_vals[1:5])
+        minx = xc - 0.5 * w
+        miny = yc - 0.5 * h
+
+        if len(row_vals) > 5:
+            confidence = float(row_vals[5])
+            
+    else: # polygon case
+        vertices = list(map(float, row_vals[1:]))
+        vertices = np.reshape(vertices, (-1, 2))
+        minx, miny = vertices.min(axis=0)
+        maxx, maxy = vertices.max(axis=0)
+        w = maxx - minx
+        h = maxy - miny
 
     try:
         label = classes[int(target)]
     except:
         label = str(target)
 
-    bounding_box = [
-        (float(xc) - 0.5 * float(w)),
-        (float(yc) - 0.5 * float(h)),
-        float(w),
-        float(h),
-    ]
-
-    if len(row_vals) > 5:
-        confidence = float(row_vals[5])
-    else:
-        confidence = None
+    bounding_box = [minx, miny, w, h]
 
     return fol.Detection(
         label=label, bounding_box=bounding_box, confidence=confidence
